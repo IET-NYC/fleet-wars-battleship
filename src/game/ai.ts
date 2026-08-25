@@ -116,44 +116,50 @@ export class HuntTargetAI {
    */
   private retireSunkShip(sunkAt: Coord, length: number): void {
     const active = new Set(this.activeHits.map(key));
-    const runThrough = (coord: Coord, axis: "row" | "col"): Coord[] => {
-      const cells = [coord];
-      for (const direction of [-1, 1]) {
-        let step = 1;
-        for (;;) {
-          const next: Coord =
-            axis === "row"
-              ? { row: coord.row, col: coord.col + direction * step }
-              : { row: coord.row + direction * step, col: coord.col };
-          if (!onBoard(next) || !active.has(key(next))) break;
-          cells.push(next);
-          step += 1;
-        }
-      }
-      return cells;
-    };
+    const windows = [
+      ...this.sunkWindows(sunkAt, length, active, { row: 0, col: 1 }),
+      ...this.sunkWindows(sunkAt, length, active, { row: 1, col: 0 }),
+    ];
+    // Prefer a footprint whose ends are capped by non-hits: a run of hits longer
+    // than the sunk ship means a second ship is touching it, and only the capped
+    // window can be the ship that actually went down.
+    windows.sort((a, b) => b.score - a.score);
 
-    const horizontal = runThrough(sunkAt, "row");
-    const vertical = runThrough(sunkAt, "col");
-
-    let sunkCells: Coord[];
-    if (length === 1) {
-      sunkCells = [sunkAt];
-    } else if (horizontal.length >= length && vertical.length >= length) {
-      // Ambiguous cross of hits; prefer the axis that matches the length exactly.
-      sunkCells = horizontal.length === length ? horizontal : vertical;
-    } else if (horizontal.length >= length) {
-      sunkCells = horizontal;
-    } else if (vertical.length >= length) {
-      sunkCells = vertical;
-    } else {
-      // Should not happen, but never leave a sunk ship's own cell active.
-      sunkCells = [sunkAt];
-    }
-
-    const sunkKeys = new Set(sunkCells.slice(0, Math.max(length, 1)).map(key));
+    const sunkKeys = new Set((windows[0]?.cells ?? [sunkAt]).map(key));
     sunkKeys.add(key(sunkAt));
     this.activeHits = this.activeHits.filter((coord) => !sunkKeys.has(key(coord)));
+  }
+
+  /**
+   * Every length-`length` run of hit cells along `step` that contains `sunkAt`.
+   * `score` counts how many of the run's two ends are capped by a cell that is
+   * not an outstanding hit (off-board counts as capped).
+   */
+  private sunkWindows(
+    sunkAt: Coord,
+    length: number,
+    active: Set<string>,
+    step: Coord,
+  ): { cells: Coord[]; score: number }[] {
+    const at = (offset: number): Coord => ({
+      row: sunkAt.row + step.row * offset,
+      col: sunkAt.col + step.col * offset,
+    });
+    const isHit = (coord: Coord) => onBoard(coord) && active.has(key(coord));
+    const windows: { cells: Coord[]; score: number }[] = [];
+
+    for (let back = 0; back < Math.max(length, 1); back += 1) {
+      const cells: Coord[] = [];
+      for (let index = 0; index < Math.max(length, 1); index += 1) {
+        cells.push(at(index - back));
+      }
+      if (!cells.every(isHit)) continue;
+      const before = at(-back - 1);
+      const after = at(length - back);
+      windows.push({ cells, score: (isHit(before) ? 0 : 1) + (isHit(after) ? 0 : 1) });
+    }
+
+    return windows;
   }
 
   private dropShipLength(length: number): void {

@@ -272,6 +272,22 @@ describe("HuntTargetAI target mode", () => {
     expect(queue).not.toContain("E5");
   });
 
+  it("retires only the sunk ship when two ships touch end to end in one line", () => {
+    const ai = new HuntTargetAI([3, 2], seededRandom(11));
+    // Cascade lies A1-A3 vertically; Deep Wiki continues the same column at A4-A5.
+    for (const row of [0, 1, 2, 3]) {
+      ai.registerResult({ coord: { row, col: 0 }, outcome: "hit" });
+    }
+    ai.registerResult({ coord: { row: 4, col: 0 }, outcome: "sunk", sunkShipLength: 2 });
+
+    // A4/A5 belonged to Deep Wiki; A1-A3 are still Cascade's unresolved hits.
+    expect(ai.mode).toBe("target");
+    const queue = ai.targetQueue.map(label);
+    expect(queue).toContain("B1");
+    expect(queue).toContain("B3");
+    expect(queue).not.toContain("A6");
+  });
+
   it("clears target mode when the sunk ship was the only outstanding hit", () => {
     const ai = new HuntTargetAI([3, 2], seededRandom(11));
     ai.registerResult({ coord: { row: 2, col: 2 }, outcome: "hit" });
