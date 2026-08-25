@@ -28,10 +28,13 @@ Then open the printed URL (defaults to http://localhost:5173).
 ## Run tests / checks
 
 ```bash
-npm test        # Vitest unit tests for board, rules and AI
+npm test        # 73 Vitest tests: board, rules, AI, reducer, full-game stress
 npm run lint    # ESLint
 npm run build   # TypeScript project build + Vite production bundle
 ```
+
+All three run in CI on every push and pull request
+(`.github/workflows/ci.yml`).
 
 ## File structure
 
@@ -53,21 +56,23 @@ fleet-wars-battleship/
 │   │   ├── ai.ts           # HuntTargetAI (pure, no React imports)
 │   │   └── theme.ts        # ship names, colors, flavor text
 │   ├── state/
-│   │   └── useGame.ts      # useReducer-based game state machine
+│   │   ├── gameReducer.ts  # pure phase/turn state machine
+│   │   └── useGame.ts      # React hook: AI instance, enemy delay, toasts, R key
 │   ├── components/
-│   │   ├── Grid.tsx
-│   │   ├── Cell.tsx
+│   │   ├── BoardGrid.tsx   # grid + cells, placement preview and firing
 │   │   ├── ShipTray.tsx
 │   │   ├── FleetStatus.tsx
 │   │   ├── BattleLog.tsx
 │   │   ├── Toast.tsx
-│   │   └── GameOver.tsx
+│   │   └── GameOverPanel.tsx
 │   └── styles/
 │       └── index.css
 └── tests/
     ├── board.test.ts
     ├── rules.test.ts
-    └── ai.test.ts
+    ├── ai.test.ts
+    ├── gameReducer.test.ts
+    └── stress.test.ts      # seeded full games driven through the reducer
 ```
 
 Game logic lives entirely in `src/game/` and `src/state/` and never imports
@@ -100,6 +105,12 @@ after the game is over.
 
 Its own fleet is placed randomly (valid, non-overlapping) and re-rolled every
 game.
+
+## Deployment
+
+GitHub Pages, built from `main` by `.github/workflows/deploy.yml`: the workflow
+runs the tests, builds with `VITE_BASE_PATH` set to the repository path so asset
+URLs resolve under the Pages subdirectory, and publishes `dist/`.
 
 ## License
 

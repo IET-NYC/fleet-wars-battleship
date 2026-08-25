@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { accuracy, shotsFired } from "../game/rules";
 import type { Board, Side } from "../game/types";
 
@@ -16,6 +17,13 @@ export default function GameOverPanel({
   onPlayAgain,
 }: GameOverPanelProps) {
   const won = winner === "player";
+  // The panel lands under a cursor that was just clicking cells, so a click
+  // already in flight must not reset the game before the result is read.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setArmed(true), 500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/85 px-4 backdrop-blur-sm">
@@ -58,7 +66,8 @@ export default function GameOverPanel({
         <button
           type="button"
           onClick={onPlayAgain}
-          className="mt-6 w-full rounded bg-cognition px-4 py-2 font-semibold uppercase tracking-wider text-abyss hover:bg-cognition-bright"
+          disabled={!armed}
+          className="mt-6 w-full rounded bg-cognition px-4 py-2 font-semibold uppercase tracking-wider text-abyss transition-opacity hover:bg-cognition-bright disabled:opacity-50"
         >
           Play Again
         </button>
