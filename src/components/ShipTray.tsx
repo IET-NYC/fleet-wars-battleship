@@ -1,5 +1,15 @@
 import type { Board, Orientation, ShipSpec } from "../game/types";
 import { PLAYER_SHIPS } from "../game/theme";
+import type { GameMode } from "../state/gameReducer";
+
+const MODES: { id: GameMode; label: string; blurb: string }[] = [
+  { id: "standard", label: "Standard", blurb: "Even odds. Strict alternating turns." },
+  {
+    id: "op",
+    label: "OP-Mode",
+    blurb: "Cognition favoured: every hit earns another shot, and Cursor hunts blind.",
+  },
+];
 
 interface ShipTrayProps {
   board: Board;
@@ -13,6 +23,8 @@ interface ShipTrayProps {
   onClear: () => void;
   onStart: () => void;
   readyToStart: boolean;
+  mode: GameMode;
+  onModeChange: (mode: GameMode) => void;
 }
 
 export default function ShipTray({
@@ -27,6 +39,8 @@ export default function ShipTray({
   onClear,
   onStart,
   readyToStart,
+  mode,
+  onModeChange,
 }: ShipTrayProps) {
   const trayIds = new Set(tray.map((spec) => spec.id));
 
@@ -40,6 +54,30 @@ export default function ShipTray({
           {PLAYER_SHIPS.length - tray.length}/{PLAYER_SHIPS.length} placed
         </span>
       </header>
+
+      <div>
+        <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Game mode</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {MODES.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={mode === option.id}
+              onClick={() => onModeChange(option.id)}
+              className={`rounded border px-3 py-2 uppercase tracking-wider transition-colors ${
+                mode === option.id
+                  ? "border-cognition-bright bg-cognition-deep text-cognition-bright"
+                  : "border-white/15 text-slate-300 hover:border-cognition/60"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          {MODES.find((option) => option.id === mode)?.blurb}
+        </p>
+      </div>
 
       <ul className="flex flex-col gap-2">
         {PLAYER_SHIPS.map((spec) => {

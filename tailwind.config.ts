@@ -44,6 +44,12 @@ export default {
           "0%": { opacity: "0", transform: "translateY(-8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "flash-strike": {
+          "0%": { opacity: "0", transform: "scale(0.75)" },
+          "25%": { opacity: "1", transform: "scale(1.06)" },
+          "70%": { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(1.02)" },
+        },
         "radar-sweep": {
           "0%": { opacity: "0.15" },
           "50%": { opacity: "0.4" },
@@ -55,6 +61,7 @@ export default {
         "miss-fade": "miss-fade 220ms ease-out",
         "sunk-shake": "sunk-shake 380ms ease-in-out",
         "toast-in": "toast-in 180ms ease-out",
+        "flash-strike": "flash-strike 900ms ease-out",
         "radar-sweep": "radar-sweep 2.4s ease-in-out infinite",
       },
     },

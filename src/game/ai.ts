@@ -25,6 +25,13 @@ function isParity({ row, col }: Coord): boolean {
   return (row + col) % 2 === 0;
 }
 
+export interface AiOptions {
+  /** Restrict hunting to the checkerboard pattern. Off makes the AI sloppier. */
+  useParity?: boolean;
+  /** Probability of chasing an outstanding hit instead of hunting at random. */
+  targetChance?: number;
+}
+
 export interface AiShotReport {
   coord: Coord;
   outcome: ShotOutcome;
@@ -39,10 +46,18 @@ export class HuntTargetAI {
   private remainingShipLengths: number[];
   private gameOver = false;
   private readonly random: () => number;
+  private readonly useParity: boolean;
+  private readonly targetChance: number;
 
-  constructor(shipLengths: number[], random: () => number = Math.random) {
+  constructor(
+    shipLengths: number[],
+    random: () => number = Math.random,
+    options: AiOptions = {},
+  ) {
     this.remainingShipLengths = [...shipLengths];
     this.random = random;
+    this.useParity = options.useParity ?? true;
+    this.targetChance = options.targetChance ?? 1;
   }
 
   get mode(): "hunt" | "target" {
@@ -73,7 +88,9 @@ export class HuntTargetAI {
     }
 
     const targets = this.buildTargets();
-    if (targets.length > 0) {
+    // A targetChance below 1 lets the AI wander off a known hit; the roll is
+    // skipped entirely at full chance so seeded runs stay reproducible.
+    if (targets.length > 0 && (this.targetChance >= 1 || this.random() < this.targetChance)) {
       return targets[0].coord;
     }
 
@@ -242,7 +259,7 @@ export class HuntTargetAI {
 
     const length = this.smallestRemainingLength;
     const viable = unfired.filter((coord) => this.canHideShip(coord, length));
-    const parityViable = viable.filter(isParity);
+    const parityViable = this.useParity ? viable.filter(isParity) : [];
 
     if (parityViable.length > 0) return parityViable;
     if (viable.length > 0) return viable;

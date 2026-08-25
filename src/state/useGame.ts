@@ -4,11 +4,17 @@ import { fireShot } from "../game/rules";
 import { PLAYER_SHIPS } from "../game/theme";
 import type { Coord } from "../game/types";
 import { createInitialState, fleetReady, gameReducer, unplacedShips } from "./gameReducer";
+import type { GameMode } from "./gameReducer";
+import type { AiOptions } from "../game/ai";
 
 /** Enemy turns feel deliberate rather than instant, and lock input while pending. */
 const MIN_AI_DELAY_MS = 600;
 const MAX_AI_DELAY_MS = 900;
 const TOAST_MS = 3600;
+const FLASH_MS = 900;
+
+/** OP-MODE hobbles the Cursor AI: no parity sweep, and it often loses the scent. */
+const OP_MODE_AI: AiOptions = { useParity: false, targetChance: 0.55 };
 
 export function useGame() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
@@ -17,7 +23,11 @@ export function useGame() {
   stateRef.current = state;
 
   const startBattle = useCallback(() => {
-    aiRef.current = new HuntTargetAI(PLAYER_SHIPS.map((ship) => ship.length));
+    aiRef.current = new HuntTargetAI(
+      PLAYER_SHIPS.map((ship) => ship.length),
+      Math.random,
+      stateRef.current.mode === "op" ? OP_MODE_AI : {},
+    );
     dispatch({ type: "startBattle" });
   }, []);
 
@@ -49,6 +59,13 @@ export function useGame() {
     return () => window.clearTimeout(timer);
   }, [state.phase]);
 
+  const flashId = state.flash?.id;
+  useEffect(() => {
+    if (flashId === undefined) return;
+    const timer = window.setTimeout(() => dispatch({ type: "dismissFlash", id: flashId }), FLASH_MS);
+    return () => window.clearTimeout(timer);
+  }, [flashId]);
+
   const toastId = state.toast?.id;
   useEffect(() => {
     if (toastId === undefined) return;
@@ -78,6 +95,7 @@ export function useGame() {
       clearFleet: () => dispatch({ type: "clearFleet" }),
       fireAt: (coord: Coord) => dispatch({ type: "playerFire", coord }),
       dismissToast: (id: number) => dispatch({ type: "dismissToast", id }),
+      setMode: (mode: GameMode) => dispatch({ type: "setMode", mode }),
       startBattle,
       reset,
     }),
