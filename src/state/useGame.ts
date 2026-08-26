@@ -3,7 +3,13 @@ import { HuntTargetAI, aiOptionsFor } from "../game/ai";
 import { fireShot } from "../game/rules";
 import { PLAYER_SHIPS } from "../game/theme";
 import type { Coord } from "../game/types";
-import { createInitialState, fleetReady, gameReducer, unplacedShips } from "./gameReducer";
+import {
+  createInitialState,
+  fleetReady,
+  gameReducer,
+  statusFor,
+  unplacedShips,
+} from "./gameReducer";
 import type { Difficulty, GameMode } from "./gameReducer";
 
 /** Enemy turns feel deliberate rather than instant, and lock input while pending. */
@@ -18,14 +24,21 @@ export function useGame() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  /** Builds the opponent from the difficulty and mode chosen during placement. */
+  const createAi = useCallback(
+    () =>
+      new HuntTargetAI(
+        PLAYER_SHIPS.map((ship) => ship.length),
+        Math.random,
+        aiOptionsFor(stateRef.current.difficulty, stateRef.current.mode === "op"),
+      ),
+    [],
+  );
+
   const startBattle = useCallback(() => {
-    aiRef.current = new HuntTargetAI(
-      PLAYER_SHIPS.map((ship) => ship.length),
-      Math.random,
-      aiOptionsFor(stateRef.current.difficulty, stateRef.current.mode === "op"),
-    );
+    aiRef.current = createAi();
     dispatch({ type: "startBattle" });
-  }, []);
+  }, [createAi]);
 
   const reset = useCallback(() => {
     aiRef.current = null;
@@ -38,9 +51,23 @@ export function useGame() {
     if (state.phase !== "enemyTurn") return;
     const delay = MIN_AI_DELAY_MS + Math.random() * (MAX_AI_DELAY_MS - MIN_AI_DELAY_MS);
     const timer = window.setTimeout(() => {
+      // Rebuild the AI rather than stalling on "Enemy is thinking…" if the
+      // instance was lost (a hot reload drops the ref but keeps the state).
+      if (!aiRef.current) aiRef.current = createAi();
       const ai = aiRef.current;
-      if (!ai || ai.isGameOver) return;
-      const coord = ai.nextShot();
+      if (ai.isGameOver) return;
+
+      let coord: Coord;
+      try {
+        coord = ai.nextShot();
+      } catch (error) {
+        // Nothing can catch a throw from a timer, and a stuck enemy turn is
+        // unrecoverable, so surrender the turn instead of hanging the game.
+        console.error("Cursor Fleet could not fire", error);
+        dispatch({ type: "enemyStandDown" });
+        return;
+      }
+
       const result = fireShot(stateRef.current.playerBoard, coord);
       const sunkShip =
         result.shot.outcome === "sunk"
@@ -53,7 +80,7 @@ export function useGame() {
       dispatch({ type: "enemyFire", coord });
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [state.phase]);
+  }, [createAi, state.phase]);
 
   const flashId = state.flash?.id;
   useEffect(() => {
@@ -102,6 +129,7 @@ export function useGame() {
   return {
     state,
     actions,
+    status: statusFor(state),
     /** Player input is only live on the player's own turn. */
     canFire: state.phase === "playerTurn",
     isEnemyThinking: state.phase === "enemyTurn",

@@ -64,8 +64,9 @@ export type GameAction =
   | { type: "autoPlace"; random?: () => number }
   | { type: "clearFleet" }
   | { type: "startBattle"; random?: () => number }
-  | { type: "playerFire"; coord: Coord }
-  | { type: "enemyFire"; coord: Coord }
+  | { type: "playerFire"; coord: Coord; random?: () => number }
+  | { type: "enemyFire"; coord: Coord; random?: () => number }
+  | { type: "enemyStandDown" }
   | { type: "dismissToast"; id: number }
   | { type: "dismissFlash"; id: number }
   | { type: "setMode"; mode: GameMode }
@@ -112,6 +113,22 @@ export function shipAt(board: Board, { row, col }: Coord): Ship | undefined {
   const shipId = board.cells[row][col].shipId;
   if (!shipId) return undefined;
   return board.ships.find((ship) => ship.id === shipId);
+}
+
+/** The one-line headline shown under the title for the current phase. */
+export function statusFor(state: GameState): string {
+  switch (state.phase) {
+    case "placement":
+      return fleetReady(state.playerBoard)
+        ? "Fleet ready. Start the battle when you are."
+        : "Deploy your fleet.";
+    case "enemyTurn":
+      return "Enemy is thinking…";
+    case "gameOver":
+      return state.winner === "player" ? "Cursor Fleet destroyed." : "Cognition Fleet destroyed.";
+    default:
+      return "Your turn. Pick a target.";
+  }
 }
 
 function withLog(state: GameState, entries: Omit<LogEntry, "id">[]): GameState {
@@ -259,12 +276,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "playerFire": {
       if (state.phase !== "playerTurn") return state;
-      return resolveShot(state, "player", action.coord, Math.random);
+      return resolveShot(state, "player", action.coord, action.random ?? Math.random);
     }
 
     case "enemyFire": {
       if (state.phase !== "enemyTurn") return state;
-      return resolveShot(state, "enemy", action.coord, Math.random);
+      return resolveShot(state, "enemy", action.coord, action.random ?? Math.random);
+    }
+
+    case "enemyStandDown": {
+      // The AI failed to produce a shot; hand the turn back rather than hang.
+      if (state.phase !== "enemyTurn") return state;
+      return withLog({ ...state, phase: "playerTurn" }, [
+        { source: "system", text: "Cursor Fleet holds its fire. Your turn." },
+      ]);
     }
 
     case "dismissToast": {

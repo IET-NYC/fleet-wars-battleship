@@ -1,3 +1,4 @@
+import { cloneBoard } from "./board";
 import { BOARD_SIZE } from "./types";
 import type {
   Board,
@@ -50,15 +51,7 @@ export function fireShot(board: Board, coord: Coord): ShotResult {
     throw new Error(`Cell ${coordLabel(coord)} has already been fired upon`);
   }
 
-  const next: Board = {
-    cells: board.cells.map((row) => row.map((cell) => ({ ...cell }))),
-    ships: board.ships.map((ship) => ({
-      ...ship,
-      cells: ship.cells.map((c) => ({ ...c })),
-      hits: [...ship.hits],
-    })),
-  };
-
+  const next: Board = cloneBoard(board);
   const cell = next.cells[coord.row][coord.col];
   cell.fired = true;
 

@@ -41,7 +41,8 @@ export function isValidPlacement(
   });
 }
 
-function cloneBoard(board: Board): Board {
+/** Deep copy of `board`: cells, ships, ship footprints and hit lists. */
+export function cloneBoard(board: Board): Board {
   return {
     cells: board.cells.map((row) => row.map((cell) => ({ ...cell }))),
     ships: board.ships.map((ship) => ({

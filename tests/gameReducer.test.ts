@@ -7,6 +7,7 @@ import {
   createInitialState,
   fleetReady,
   gameReducer,
+  statusFor,
   unplacedShips,
 } from "../src/state/gameReducer";
 import type { GameMode, GameState } from "../src/state/gameReducer";
@@ -379,5 +380,54 @@ describe("placement locks during battle", () => {
     ]) {
       expect(gameReducer(battle, action)).toBe(battle);
     }
+  });
+});
+
+describe("deterministic shot flavour", () => {
+  it("uses the injected random for shot flavour instead of Math.random", () => {
+    const battle = inBattle();
+    const coord = { row: 0, col: 0 };
+    const first = gameReducer(battle, { type: "playerFire", coord, random: () => 0 });
+    const second = gameReducer(battle, { type: "playerFire", coord, random: () => 0 });
+    const third = gameReducer(battle, { type: "playerFire", coord, random: () => 0.99 });
+
+    expect(first.log[0].text).toBe(second.log[0].text);
+    expect(first.log[0].text).not.toBe(third.log[0].text);
+  });
+});
+
+describe("enemyStandDown", () => {
+  it("hands the turn back to the player when the AI cannot fire", () => {
+    const battle = gameReducer(inBattle(), { type: "playerFire", coord: { row: 0, col: 0 } });
+    expect(battle.phase).toBe("enemyTurn");
+
+    const recovered = gameReducer(battle, { type: "enemyStandDown" });
+    expect(recovered.phase).toBe("playerTurn");
+    expect(recovered.log[0].text).toContain("holds its fire");
+  });
+
+  it("is ignored outside the enemy turn", () => {
+    const battle = inBattle();
+    expect(gameReducer(battle, { type: "enemyStandDown" })).toBe(battle);
+  });
+});
+
+describe("statusFor", () => {
+  it("describes each phase", () => {
+    const placement = createInitialState();
+    expect(statusFor(placement)).toBe("Deploy your fleet.");
+    expect(statusFor(gameReducer(placement, { type: "autoPlace", random: seededRandom(4) }))).toBe(
+      "Fleet ready. Start the battle when you are.",
+    );
+
+    const battle = inBattle();
+    expect(statusFor(battle)).toBe("Your turn. Pick a target.");
+    expect(statusFor({ ...battle, phase: "enemyTurn" })).toBe("Enemy is thinking\u2026");
+    expect(statusFor({ ...battle, phase: "gameOver", winner: "player" })).toBe(
+      "Cursor Fleet destroyed.",
+    );
+    expect(statusFor({ ...battle, phase: "gameOver", winner: "enemy" })).toBe(
+      "Cognition Fleet destroyed.",
+    );
   });
 });
