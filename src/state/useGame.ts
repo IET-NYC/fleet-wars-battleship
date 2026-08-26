@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import { HuntTargetAI } from "../game/ai";
+import { HuntTargetAI, aiOptionsFor } from "../game/ai";
 import { fireShot } from "../game/rules";
 import { PLAYER_SHIPS } from "../game/theme";
 import type { Coord } from "../game/types";
 import { createInitialState, fleetReady, gameReducer, unplacedShips } from "./gameReducer";
-import type { GameMode } from "./gameReducer";
-import type { AiOptions } from "../game/ai";
+import type { Difficulty, GameMode } from "./gameReducer";
 
 /** Enemy turns feel deliberate rather than instant, and lock input while pending. */
 const MIN_AI_DELAY_MS = 600;
 const MAX_AI_DELAY_MS = 900;
 const TOAST_MS = 3600;
 const FLASH_MS = 900;
-
-/** OP-MODE hobbles the Cursor AI: no parity sweep, and it often loses the scent. */
-const OP_MODE_AI: AiOptions = { useParity: false, targetChance: 0.55 };
 
 export function useGame() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
@@ -26,7 +22,7 @@ export function useGame() {
     aiRef.current = new HuntTargetAI(
       PLAYER_SHIPS.map((ship) => ship.length),
       Math.random,
-      stateRef.current.mode === "op" ? OP_MODE_AI : {},
+      aiOptionsFor(stateRef.current.difficulty, stateRef.current.mode === "op"),
     );
     dispatch({ type: "startBattle" });
   }, []);
@@ -96,6 +92,7 @@ export function useGame() {
       fireAt: (coord: Coord) => dispatch({ type: "playerFire", coord }),
       dismissToast: (id: number) => dispatch({ type: "dismissToast", id }),
       setMode: (mode: GameMode) => dispatch({ type: "setMode", mode }),
+      setDifficulty: (difficulty: Difficulty) => dispatch({ type: "setDifficulty", difficulty }),
       startBattle,
       reset,
     }),

@@ -285,6 +285,27 @@ describe("shot flash", () => {
   });
 });
 
+describe("AI difficulty", () => {
+  it("defaults to medium and can only be switched during placement", () => {
+    expect(createInitialState().difficulty).toBe("medium");
+    const chosen = gameReducer(createInitialState(), {
+      type: "setDifficulty",
+      difficulty: "hard",
+    });
+    expect(chosen.difficulty).toBe("hard");
+
+    const battle = inBattle();
+    expect(gameReducer(battle, { type: "setDifficulty", difficulty: "easy" })).toBe(battle);
+  });
+
+  it("keeps the chosen difficulty alongside the mode across Play Again", () => {
+    const chosen = gameReducer(placedFleet("op"), { type: "setDifficulty", difficulty: "easy" });
+    const battle = gameReducer(chosen, { type: "startBattle", random: seededRandom(7) });
+    const fresh = gameReducer(battle, { type: "reset" });
+    expect(fresh).toEqual(createInitialState("op", "easy"));
+  });
+});
+
 describe("OP-MODE", () => {
   it("is off by default and can only be switched during placement", () => {
     expect(createInitialState().mode).toBe("standard");

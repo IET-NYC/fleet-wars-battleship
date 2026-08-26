@@ -36,11 +36,16 @@ export default function App() {
         <p className="mt-1 text-xs uppercase tracking-[0.35em] text-slate-400 sm:text-sm">
           Cognition vs. Cursor
         </p>
-        {state.mode === "op" ? (
-          <p className="mt-2 inline-block rounded-full border border-cognition-bright/50 px-3 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-cognition-bright">
-            OP-Mode · Cognition favoured
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {state.mode === "op" ? (
+            <p className="inline-block rounded-full border border-cognition-bright/50 px-3 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-cognition-bright">
+              OP-Mode · Cognition favoured
+            </p>
+          ) : null}
+          <p className="inline-block rounded-full border border-cursor-bright/50 px-3 py-1 text-[0.65rem] uppercase tracking-[0.3em] text-cursor-bright">
+            {state.difficulty} AI
           </p>
-        ) : null}
+        </div>
         <p
           aria-live="polite"
           className={`mt-3 text-sm ${
@@ -107,6 +112,8 @@ export default function App() {
               readyToStart={readyToStart}
               mode={state.mode}
               onModeChange={actions.setMode}
+              difficulty={state.difficulty}
+              onDifficultyChange={actions.setDifficulty}
             />
           ) : null}
         </div>

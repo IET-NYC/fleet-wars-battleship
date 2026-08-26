@@ -1,6 +1,7 @@
 import { clearShips, createBoard, placeShip, randomPlacement, removeShip } from "../game/board";
 import { alreadyFired, coordLabel, fireShot } from "../game/rules";
 import { ENEMY_SHIPS, PLAYER_SHIPS, flavorFor } from "../game/theme";
+import type { AiDifficulty } from "../game/ai";
 import type {
   Board,
   Coord,
@@ -19,6 +20,8 @@ export type Phase = "placement" | "playerTurn" | "enemyTurn" | "gameOver";
  * Cursor AI gives up its parity search and often wanders off a known hit.
  */
 export type GameMode = "standard" | "op";
+
+export type { AiDifficulty as Difficulty } from "../game/ai";
 
 /** A shot worth announcing on screen — drives the DIRECT HIT / MISS flash. */
 export interface ShotFlash {
@@ -47,6 +50,8 @@ export interface GameState {
   toast: { id: number; text: string } | null;
   flash: ShotFlash | null;
   mode: GameMode;
+  /** How sharply the Cursor AI plays. */
+  difficulty: AiDifficulty;
   winner: Side | null;
   nextId: number;
 }
@@ -64,11 +69,15 @@ export type GameAction =
   | { type: "dismissToast"; id: number }
   | { type: "dismissFlash"; id: number }
   | { type: "setMode"; mode: GameMode }
+  | { type: "setDifficulty"; difficulty: AiDifficulty }
   | { type: "reset" };
 
 export const LOG_LIMIT = 50;
 
-export function createInitialState(mode: GameMode = "standard"): GameState {
+export function createInitialState(
+  mode: GameMode = "standard",
+  difficulty: AiDifficulty = "medium",
+): GameState {
   return {
     phase: "placement",
     playerBoard: createBoard(),
@@ -85,6 +94,7 @@ export function createInitialState(mode: GameMode = "standard"): GameState {
     toast: null,
     flash: null,
     mode,
+    difficulty,
     winner: null,
     nextId: 1,
   };
@@ -272,9 +282,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, mode: action.mode };
     }
 
+    case "setDifficulty": {
+      if (state.phase !== "placement") return state;
+      return { ...state, difficulty: action.difficulty };
+    }
+
     case "reset":
-      // A rematch keeps the mode the player chose.
-      return createInitialState(state.mode);
+      // A rematch keeps the mode and difficulty the player chose.
+      return createInitialState(state.mode, state.difficulty);
 
     default:
       return state;

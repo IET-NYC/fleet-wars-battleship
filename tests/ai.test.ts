@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createBoard, placeShip, randomPlacement } from "../src/game/board";
-import { HuntTargetAI } from "../src/game/ai";
-import type { AiOptions } from "../src/game/ai";
+import { DIFFICULTY_PRESETS, HuntTargetAI, aiOptionsFor } from "../src/game/ai";
+import type { AiDifficulty, AiOptions } from "../src/game/ai";
 import { alreadyFired, coordLabel, fireShot, isSunk } from "../src/game/rules";
 import { PLAYER_SHIPS } from "../src/game/theme";
 import { BOARD_SIZE } from "../src/game/types";
@@ -337,6 +337,113 @@ describe("HuntTargetAI target mode", () => {
     expect(aiTotal / games).toBeLessThan(randomTotal / games);
     // A competent hunt/target AI clears the board in well under 70 shots.
     expect(aiTotal / games).toBeLessThan(70);
+  });
+});
+
+describe("difficulty presets", () => {
+  it("never chases an outstanding hit on easy, always on hard", () => {
+    const neighbours = new Set(
+      [
+        { row: 3, col: 4 },
+        { row: 5, col: 4 },
+        { row: 4, col: 3 },
+        { row: 4, col: 5 },
+      ].map(label),
+    );
+    const chases = (difficulty: AiDifficulty, seed: number) => {
+      const ai = new HuntTargetAI([3], seededRandom(seed), aiOptionsFor(difficulty));
+      ai.registerResult({ coord: { row: 4, col: 4 }, outcome: "hit" });
+      return neighbours.has(label(ai.nextShot()));
+    };
+
+    const trials = 200;
+    let easyChases = 0;
+    for (let seed = 1; seed <= trials; seed += 1) {
+      if (chases("easy", seed * 37)) easyChases += 1;
+      expect(chases("hard", seed * 37)).toBe(true);
+    }
+
+    // Easy only lands next to the hit by chance: 4 of the 99 unfired cells.
+    expect(easyChases / trials).toBeLessThan(0.15);
+  });
+
+  it("fires into cells too boxed in to hide a ship on easy but not on hard", () => {
+    // Only B2 is left unfired inside a fully shot-out 3x3 block, so it cannot
+    // hide the length-2 ship: a fit-aware AI skips it, easy does not.
+    const boxed = { row: 1, col: 1 };
+    const fill = (ai: HuntTargetAI) => {
+      for (let row = 0; row < 3; row += 1) {
+        for (let col = 0; col < 3; col += 1) {
+          if (row === boxed.row && col === boxed.col) continue;
+          ai.registerResult({ coord: { row, col }, outcome: "miss" });
+        }
+      }
+    };
+
+    const easy = new HuntTargetAI([2], seededRandom(7), aiOptionsFor("easy"));
+    fill(easy);
+    const hard = new HuntTargetAI([2], seededRandom(7), aiOptionsFor("hard"));
+    fill(hard);
+
+    // 91 unfired cells remain, so a fit-aware AI has plenty of viable ones to
+    // choose from and should not waste a shot on the boxed-in cell.
+    const firesAtBoxed = (ai: HuntTargetAI, shots: number) => {
+      for (let shot = 0; shot < shots; shot += 1) {
+        const coord = ai.nextShot();
+        if (coord.row === boxed.row && coord.col === boxed.col) return true;
+        ai.registerResult({ coord, outcome: "miss" });
+      }
+      return false;
+    };
+
+    expect(firesAtBoxed(easy, 91)).toBe(true);
+    expect(firesAtBoxed(hard, 60)).toBe(false);
+  });
+
+  it("gets stronger from easy to medium to hard on the same layouts", () => {
+    const games = 25;
+    const totals: Record<AiDifficulty, number> = { easy: 0, medium: 0, hard: 0 };
+
+    for (let seed = 1; seed <= games; seed += 1) {
+      const layout = randomPlacement(PLAYER_SHIPS, seededRandom(seed * 613));
+      for (const difficulty of ["easy", "medium", "hard"] as const) {
+        totals[difficulty] += playOut(
+          layout,
+          seededRandom(seed * 71),
+          aiOptionsFor(difficulty),
+        ).shots;
+      }
+    }
+
+    expect(totals.hard).toBeLessThan(totals.medium);
+    expect(totals.medium).toBeLessThan(totals.easy);
+  });
+
+  it("honours the three never-rules on every difficulty, handicapped or not", () => {
+    for (const difficulty of ["easy", "medium", "hard"] as const) {
+      for (const handicapped of [false, true]) {
+        for (let seed = 1; seed <= 5; seed += 1) {
+          const random = seededRandom(seed * 977);
+          const { ai } = playOut(
+            randomPlacement(PLAYER_SHIPS, random),
+            random,
+            aiOptionsFor(difficulty, handicapped),
+          );
+          expect(ai.isGameOver).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("strips parity and dulls target chasing when handicapped for OP-MODE", () => {
+    expect(aiOptionsFor("hard")).toEqual(DIFFICULTY_PRESETS.hard);
+    expect(aiOptionsFor("hard", true)).toEqual({
+      useParity: false,
+      targetChance: 0.55,
+      useShipFit: true,
+    });
+    // Easy already never chases, so the handicap cannot make it chase.
+    expect(aiOptionsFor("easy", true).targetChance).toBe(0);
   });
 });
 
