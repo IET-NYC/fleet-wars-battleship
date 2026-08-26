@@ -13,6 +13,7 @@ export default function BattleLog({ entries }: { entries: LogEntry[] }) {
         Battle Log
       </h3>
       <ol
+        aria-label="Battle log"
         aria-live="polite"
         className="flex max-h-56 flex-col gap-1 overflow-y-auto pr-1 text-xs lg:max-h-80"
       >

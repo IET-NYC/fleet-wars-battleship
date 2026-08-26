@@ -177,7 +177,7 @@ describe("HuntTargetAI hunt mode", () => {
     }
 
     expect(ai.mode).toBe("target");
-    expect(ai.targetQueue.map(label)).toContain("B1");
+    expect(ai.debugTargetQueue.map(label)).toContain("B1");
 
     // The off-parity cell is reachable only through target mode; it must be
     // found within the four neighbours of the hit.
@@ -222,7 +222,7 @@ describe("HuntTargetAI target mode", () => {
     ai.registerResult({ coord: { row: 0, col: 0 }, outcome: "hit" });
 
     expect(ai.mode).toBe("target");
-    expect(ai.targetQueue.map(label).sort()).toEqual(["A2", "B1"]);
+    expect(ai.debugTargetQueue.map(label).sort()).toEqual(["A2", "B1"]);
   });
 
   it("skips already-fired neighbours", () => {
@@ -230,7 +230,7 @@ describe("HuntTargetAI target mode", () => {
     ai.registerResult({ coord: { row: 5, col: 4 }, outcome: "miss" });
     ai.registerResult({ coord: { row: 5, col: 5 }, outcome: "hit" });
 
-    expect(ai.targetQueue.map(label).sort()).toEqual(["F5", "F7", "G6"]);
+    expect(ai.debugTargetQueue.map(label).sort()).toEqual(["F5", "F7", "G6"]);
   });
 
   it("prioritises both line extensions over perpendicular neighbours after a second hit", () => {
@@ -238,7 +238,7 @@ describe("HuntTargetAI target mode", () => {
     ai.registerResult({ coord: { row: 4, col: 4 }, outcome: "hit" });
     ai.registerResult({ coord: { row: 4, col: 5 }, outcome: "hit" });
 
-    const queue = ai.targetQueue.map(label);
+    const queue = ai.debugTargetQueue.map(label);
     // E5-F5 is a horizontal run; D5 and G5 extend it in both directions.
     expect(queue.slice(0, 2).sort()).toEqual(["D5", "G5"]);
     expect(queue).toContain("E4");
@@ -253,7 +253,7 @@ describe("HuntTargetAI target mode", () => {
     for (const row of [3, 4, 5]) {
       ai.registerResult({ coord: { row, col: 6 }, outcome: "hit" });
     }
-    const queue = ai.targetQueue.map(label);
+    const queue = ai.debugTargetQueue.map(label);
     expect(queue.slice(0, 2).sort()).toEqual(["G3", "G7"]);
   });
 
@@ -267,7 +267,7 @@ describe("HuntTargetAI target mode", () => {
 
     // Cascade's cells are retired, but D6 is still an unresolved hit.
     expect(ai.mode).toBe("target");
-    const queue = ai.targetQueue.map(label);
+    const queue = ai.debugTargetQueue.map(label);
     expect(queue).toContain("D7");
     expect(queue).not.toContain("D5");
     expect(queue).not.toContain("C5");
@@ -284,7 +284,7 @@ describe("HuntTargetAI target mode", () => {
 
     // A4/A5 belonged to Deep Wiki; A1-A3 are still Cascade's unresolved hits.
     expect(ai.mode).toBe("target");
-    const queue = ai.targetQueue.map(label);
+    const queue = ai.debugTargetQueue.map(label);
     expect(queue).toContain("B1");
     expect(queue).toContain("B3");
     expect(queue).not.toContain("A6");
@@ -296,7 +296,7 @@ describe("HuntTargetAI target mode", () => {
     ai.registerResult({ coord: { row: 2, col: 3 }, outcome: "sunk", sunkShipLength: 2 });
 
     expect(ai.mode).toBe("hunt");
-    expect(ai.targetQueue).toEqual([]);
+    expect(ai.debugTargetQueue).toEqual([]);
   });
 
   it("requires a ship length alongside a sunk report", () => {

@@ -11,21 +11,9 @@ import { useGame } from "./state/useGame";
 const REPO_URL = "https://github.com/IET-NYC/fleet-wars-battleship";
 
 export default function App() {
-  const { state, actions, canFire, isEnemyThinking, readyToStart, tray } = useGame();
+  const { state, actions, canFire, isEnemyThinking, readyToStart, status, tray } = useGame();
   const placing = state.phase === "placement";
   const selectedSpec = PLAYER_SHIPS.find((spec) => spec.id === state.selectedShipId);
-
-  const status = placing
-    ? readyToStart
-      ? "Fleet ready. Start the battle when you are."
-      : "Deploy your fleet."
-    : isEnemyThinking
-      ? "Enemy is thinking…"
-      : state.phase === "gameOver"
-        ? state.winner === "player"
-          ? "Cursor Fleet destroyed."
-          : "Cognition Fleet destroyed."
-        : "Your turn. Pick a target.";
 
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6">
@@ -61,7 +49,10 @@ export default function App() {
       <main className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex flex-col gap-6">
           <div className="grid gap-6 md:grid-cols-2">
-            <section className="rounded-lg border border-cognition/25 bg-hull/60 p-3">
+            <section
+              aria-label="Cognition Fleet · your waters"
+              className="rounded-lg border border-cognition/25 bg-hull/60 p-3"
+            >
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-cognition-bright">
                 Cognition Fleet · your waters
               </h2>
@@ -83,7 +74,10 @@ export default function App() {
               />
             </section>
 
-            <section className="rounded-lg border border-cursor/25 bg-hull/60 p-3">
+            <section
+              aria-label="Cursor Fleet · target grid"
+              className="rounded-lg border border-cursor/25 bg-hull/60 p-3"
+            >
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-cursor-bright">
                 Cursor Fleet · target grid
               </h2>

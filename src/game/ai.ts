@@ -99,8 +99,11 @@ export class HuntTargetAI {
     return this.fired.has(key(coord));
   }
 
-  /** Cells the AI would consider next, highest priority first. Exposed for tests. */
-  get targetQueue(): Coord[] {
+  /**
+   * Cells the AI would consider next, highest priority first. Rebuilds the whole
+   * candidate list on every access, so it is for tests and debugging only.
+   */
+  get debugTargetQueue(): Coord[] {
     return this.buildTargets().map((candidate) => candidate.coord);
   }
 
@@ -268,7 +271,10 @@ export class HuntTargetAI {
   }
 
   private get smallestRemainingLength(): number {
-    return this.remainingShipLengths.length > 0 ? Math.min(...this.remainingShipLengths) : 2;
+    if (this.remainingShipLengths.length === 0) {
+      throw new Error("No ships remain: the caller should have stopped firing");
+    }
+    return Math.min(...this.remainingShipLengths);
   }
 
   /**
@@ -286,10 +292,11 @@ export class HuntTargetAI {
     }
     if (unfired.length === 0) return [];
 
-    const length = this.smallestRemainingLength;
-    const viable = this.useShipFit
-      ? unfired.filter((coord) => this.canHideShip(coord, length))
-      : unfired;
+    let viable = unfired;
+    if (this.useShipFit) {
+      const length = this.smallestRemainingLength;
+      viable = unfired.filter((coord) => this.canHideShip(coord, length));
+    }
     const parityViable = this.useParity ? viable.filter(isParity) : [];
 
     if (parityViable.length > 0) return parityViable;

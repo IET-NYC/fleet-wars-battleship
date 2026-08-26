@@ -60,6 +60,8 @@ export default function BoardGrid({
   const previewKeys = new Set(previewCells.map(coordKey));
 
   const handleClick = (coord: Coord) => {
+    // Cells stay focusable when inactive so the board can still be read, so the
+    // guard lives here rather than on the button's `disabled`.
     if (!interactive) return;
     if (placement) {
       const shipId = board.cells[coord.row][coord.col].shipId;
@@ -124,11 +126,13 @@ export default function BoardGrid({
                 <button
                   key={key}
                   type="button"
-                  disabled={!interactive}
+                  aria-disabled={!interactive}
                   aria-label={`${label} ${state}`}
                   className={classes.join(" ")}
                   onMouseEnter={() => placement && setHover(coord)}
                   onMouseLeave={() => placement && setHover(null)}
+                  onFocus={() => placement && setHover(coord)}
+                  onBlur={() => placement && setHover(null)}
                   onClick={() => handleClick(coord)}
                 >
                   {hull ? (
