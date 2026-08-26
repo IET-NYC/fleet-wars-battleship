@@ -50,6 +50,10 @@ export default {
           "70%": { opacity: "1", transform: "scale(1)" },
           "100%": { opacity: "0", transform: "scale(1.02)" },
         },
+        swell: {
+          "0%": { backgroundPosition: "0 0, 0 0" },
+          "100%": { backgroundPosition: "120px 60px, -120px 60px" },
+        },
         "radar-sweep": {
           "0%": { opacity: "0.15" },
           "50%": { opacity: "0.4" },
@@ -62,6 +66,7 @@ export default {
         "sunk-shake": "sunk-shake 380ms ease-in-out",
         "toast-in": "toast-in 180ms ease-out",
         "flash-strike": "flash-strike 900ms ease-out",
+        swell: "swell 24s linear infinite",
         "radar-sweep": "radar-sweep 2.4s ease-in-out infinite",
       },
     },

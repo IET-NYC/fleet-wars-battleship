@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { isValidPlacement, shipCells } from "../game/board";
-import { cellState, columnLabels, coordKey, coordLabel } from "../game/rules";
+import { cellState, columnLabels, coordKey, coordLabel, hullSegments } from "../game/rules";
 import type { Board, Coord, Orientation, Side } from "../game/types";
 import { BOARD_SIZE } from "../game/types";
+import HullSprite from "./HullSprite";
 
 interface PlacementConfig {
   shipLength: number;
@@ -26,9 +27,9 @@ const CELL_BASE =
 
 const STATE_CLASSES: Record<string, string> = {
   empty: "bg-white/[0.02]",
-  miss: "bg-slate-700/40 text-slate-300",
-  hit: "bg-rose-500/70 text-white",
-  sunk: "bg-rose-900/80 text-rose-100 ring-1 ring-inset ring-rose-300/60",
+  miss: "bg-slate-900/50 text-slate-300",
+  hit: "bg-rose-500/40 text-white",
+  sunk: "bg-rose-950/70 text-rose-200 ring-1 ring-inset ring-rose-300/40",
 };
 
 export default function BoardGrid({
@@ -43,8 +44,9 @@ export default function BoardGrid({
   const accent = side === "player" ? "text-cognition-bright" : "text-cursor-bright";
   const shipFill =
     side === "player"
-      ? "bg-cognition-deep text-cognition-bright ring-1 ring-inset ring-cognition/60"
-      : "bg-cursor-deep text-cursor-bright ring-1 ring-inset ring-cursor/60";
+      ? "bg-cognition-deep/40 text-cognition-bright"
+      : "bg-cursor-deep/40 text-cursor-bright";
+  const hulls = hullSegments(board);
 
   const previewCells =
     placement && hover
@@ -71,8 +73,9 @@ export default function BoardGrid({
   };
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] gap-[2px]">
+    <div className="sea-surface relative w-full overflow-hidden rounded-md p-1">
+      <div className="sea-swell pointer-events-none absolute inset-0 motion-safe:animate-swell" />
+      <div className="relative grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] gap-[2px]">
         <span aria-hidden />
         {columnLabels().map((label) => (
           <span key={label} className={`text-center text-[0.6rem] font-mono ${accent}`}>
@@ -93,6 +96,9 @@ export default function BoardGrid({
               const state = cellState(board, coord, revealShips);
               const isPreview = previewKeys.has(key);
               const label = coordLabel(coord);
+              const showsHull =
+                state === "ship" || state === "sunk" || (state === "hit" && revealShips);
+              const hull = showsHull ? hulls.get(key) : undefined;
 
               const classes = [CELL_BASE];
               if (state === "ship") classes.push(shipFill);
@@ -124,9 +130,18 @@ export default function BoardGrid({
                   onMouseLeave={() => placement && setHover(null)}
                   onClick={() => handleClick(coord)}
                 >
-                  {state === "miss" ? "•" : null}
-                  {state === "hit" ? "✕" : null}
-                  {state === "sunk" ? "▣" : null}
+                  {hull ? (
+                    <HullSprite
+                      part={hull.part}
+                      orientation={hull.orientation}
+                      wrecked={state === "sunk" || state === "hit"}
+                    />
+                  ) : null}
+                  <span className="relative">
+                    {state === "miss" ? "•" : null}
+                    {state === "hit" ? "✕" : null}
+                    {state === "sunk" ? "✕" : null}
+                  </span>
                 </button>
               );
             })}

@@ -1,5 +1,13 @@
 import { BOARD_SIZE } from "./types";
-import type { Board, CellState, Coord, Ship, ShotResult, Side } from "./types";
+import type {
+  Board,
+  CellState,
+  Coord,
+  Orientation,
+  Ship,
+  ShotResult,
+  Side,
+} from "./types";
 
 const COLUMN_LABELS = "ABCDEFGHIJ";
 
@@ -99,6 +107,38 @@ export function cellState(board: Board, coord: Coord, revealShips: boolean): Cel
   if (cell.fired) return cell.shipId === null ? "miss" : "hit";
   if (ship && revealShips) return "ship";
   return "empty";
+}
+
+/** Which part of a hull a cell draws, bow first along the ship's cells. */
+export type HullPart = "bow" | "mid" | "stern";
+
+export interface HullSegment {
+  shipId: string;
+  orientation: Orientation;
+  part: HullPart;
+  /** True once this particular cell has been hit. */
+  damaged: boolean;
+}
+
+/**
+ * Per-cell hull rendering data for every ship on `board`, keyed by `coordKey`.
+ * Lets the grid draw a continuous vessel out of independent cells.
+ */
+export function hullSegments(board: Board): Map<string, HullSegment> {
+  const segments = new Map<string, HullSegment>();
+
+  for (const ship of board.ships) {
+    ship.cells.forEach((coord, index) => {
+      segments.set(coordKey(coord), {
+        shipId: ship.id,
+        orientation: ship.orientation,
+        part: index === 0 ? "bow" : index === ship.length - 1 ? "stern" : "mid",
+        damaged: ship.hits.includes(index),
+      });
+    });
+  }
+
+  return segments;
 }
 
 export function shotsFired(board: Board): number {
