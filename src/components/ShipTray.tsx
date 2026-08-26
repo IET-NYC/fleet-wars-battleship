@@ -1,6 +1,7 @@
 import type { Board, Orientation, ShipSpec } from "../game/types";
 import { PLAYER_SHIPS } from "../game/theme";
 import type { GameMode } from "../state/gameReducer";
+import HullSprite from "./HullSprite";
 
 const MODES: { id: GameMode; label: string; blurb: string }[] = [
   { id: "standard", label: "Standard", blurb: "Even odds. Strict alternating turns." },
@@ -98,7 +99,18 @@ export default function ShipTray({
               >
                 <span className="font-medium">{spec.name}</span>
                 <span className="flex items-center gap-2 font-mono text-xs">
-                  <span className="tracking-[0.2em]">{"■".repeat(spec.length)}</span>
+                  <span aria-hidden className="flex items-center">
+                    {Array.from({ length: spec.length }, (_, index) => (
+                      <span key={index} className="relative h-4 w-4">
+                        <HullSprite
+                          part={
+                            index === 0 ? "bow" : index === spec.length - 1 ? "stern" : "mid"
+                          }
+                          orientation="horizontal"
+                        />
+                      </span>
+                    ))}
+                  </span>
                   <span className="text-slate-500">{placed ? "deployed" : `${spec.length}`}</span>
                 </span>
               </button>

@@ -16,6 +16,12 @@ AI until one fleet is fully sunk. Shots resolve to Miss, Hit, or Hit & Sunk, and
 sunk ships are revealed on the enemy grid. A battle log, per-ship health pips,
 flavour text and a **DIRECT HIT / MISS** callout on every shot narrate the fight.
 
+Both grids sit on an animated open-ocean backdrop, and ships are drawn as naval
+vessels rather than blocks: `hullSegments` in `src/game/rules.ts` labels each
+occupied cell bow / mid / stern, and `HullSprite` renders the matching SVG
+silhouette (prow, bridge, aft turret), rotated for vertical ships, so the cells
+of one ship read as a single hull.
+
 ### Game modes
 
 Pick a mode on the placement screen (it sticks across Play Again):
@@ -38,7 +44,7 @@ Then open the printed URL (defaults to http://localhost:5173).
 ## Run tests / checks
 
 ```bash
-npm test        # 85 Vitest tests: board, rules, AI, reducer, full-game stress
+npm test        # 89 Vitest tests: board, rules, AI, reducer, full-game stress
 npm run lint    # ESLint
 npm run build   # TypeScript project build + Vite production bundle
 ```
@@ -75,6 +81,7 @@ fleet-wars-battleship/
 │   │   ├── BattleLog.tsx
 │   │   ├── Toast.tsx
 │   │   ├── ShotFlash.tsx  # DIRECT HIT / MISS callout
+│   │   ├── HullSprite.tsx # bow/mid/stern ship silhouettes
 │   │   └── GameOverPanel.tsx
 │   └── styles/
 │       └── index.css

@@ -7,7 +7,9 @@ import {
   cellState,
   coordLabel,
   columnLabels,
+  coordKey,
   fireShot,
+  hullSegments,
   isSunk,
   opponentOf,
   shotsFired,
@@ -16,6 +18,7 @@ import { ENEMY_SHIPS, PLAYER_SHIPS, flavorFor } from "../src/game/theme";
 import type { Board, Coord, ShipSpec } from "../src/game/types";
 
 const destroyer: ShipSpec = { id: "deep-wiki", name: "Deep Wiki", length: 2 };
+
 const cruiser: ShipSpec = { id: "cascade", name: "Cascade", length: 3 };
 
 function boardWith(...placements: [ShipSpec, Coord, "horizontal" | "vertical"][]): Board {
@@ -198,6 +201,53 @@ describe("theme", () => {
       ];
       for (const line of lines) {
         expect(line).not.toMatch(/\{ship\}|\{coord\}/);
+      }
+    }
+  });
+});
+
+describe("hullSegments", () => {
+  it("marks bow, middle and stern along the ship's cells", () => {
+    const board = boardWith([cruiser, { row: 4, col: 2 }, "horizontal"]);
+    const segments = hullSegments(board);
+
+    expect(segments.get(coordKey({ row: 4, col: 2 }))).toEqual({
+      shipId: cruiser.id,
+      orientation: "horizontal",
+      part: "bow",
+      damaged: false,
+    });
+    expect(segments.get(coordKey({ row: 4, col: 3 }))?.part).toBe("mid");
+    expect(segments.get(coordKey({ row: 4, col: 4 }))?.part).toBe("stern");
+    expect(segments.size).toBe(cruiser.length);
+  });
+
+  it("gives a two-cell ship a bow and a stern but no middle", () => {
+    const board = boardWith([destroyer, { row: 0, col: 0 }, "vertical"]);
+    const parts = [...hullSegments(board).values()];
+
+    expect(parts.map((segment) => segment.part)).toEqual(["bow", "stern"]);
+    expect(parts.every((segment) => segment.orientation === "vertical")).toBe(true);
+  });
+
+  it("flags only the cells that have been hit as damaged", () => {
+    let board = boardWith([cruiser, { row: 6, col: 1 }, "horizontal"]);
+    board = fireShot(board, { row: 6, col: 2 }).board;
+    const segments = hullSegments(board);
+
+    expect(segments.get(coordKey({ row: 6, col: 2 }))?.damaged).toBe(true);
+    expect(segments.get(coordKey({ row: 6, col: 1 }))?.damaged).toBe(false);
+  });
+
+  it("covers every occupied cell of a full random fleet exactly once", () => {
+    const board = randomPlacement(PLAYER_SHIPS);
+    const segments = hullSegments(board);
+    const occupied = board.cells.flat().filter((cell) => cell.shipId !== null).length;
+
+    expect(segments.size).toBe(occupied);
+    for (const ship of board.ships) {
+      for (const coord of ship.cells) {
+        expect(segments.get(coordKey(coord))?.shipId).toBe(ship.id);
       }
     }
   });
