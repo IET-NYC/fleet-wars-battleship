@@ -1,6 +1,6 @@
 import type { Board, Orientation, ShipSpec } from "../game/types";
 import { PLAYER_SHIPS } from "../game/theme";
-import type { GameMode } from "../state/gameReducer";
+import type { Difficulty, GameMode } from "../state/gameReducer";
 import HullSprite from "./HullSprite";
 
 const MODES: { id: GameMode; label: string; blurb: string }[] = [
@@ -10,6 +10,12 @@ const MODES: { id: GameMode; label: string; blurb: string }[] = [
     label: "OP-Mode",
     blurb: "Cognition favoured: every hit earns another shot, and Cursor hunts blind.",
   },
+];
+
+const DIFFICULTIES: { id: Difficulty; label: string; blurb: string }[] = [
+  { id: "easy", label: "Easy", blurb: "Cursor fires at random and never follows up a hit." },
+  { id: "medium", label: "Medium", blurb: "Cursor hunts and usually chases a hit home." },
+  { id: "hard", label: "Hard", blurb: "Cursor sweeps by parity and finishes every ship it finds." },
 ];
 
 interface ShipTrayProps {
@@ -26,6 +32,8 @@ interface ShipTrayProps {
   readyToStart: boolean;
   mode: GameMode;
   onModeChange: (mode: GameMode) => void;
+  difficulty: Difficulty;
+  onDifficultyChange: (difficulty: Difficulty) => void;
 }
 
 export default function ShipTray({
@@ -42,6 +50,8 @@ export default function ShipTray({
   readyToStart,
   mode,
   onModeChange,
+  difficulty,
+  onDifficultyChange,
 }: ShipTrayProps) {
   const trayIds = new Set(tray.map((spec) => spec.id));
 
@@ -77,6 +87,30 @@ export default function ShipTray({
         </div>
         <p className="mt-2 text-xs text-slate-500">
           {MODES.find((option) => option.id === mode)?.blurb}
+        </p>
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">AI difficulty</p>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          {DIFFICULTIES.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={difficulty === option.id}
+              onClick={() => onDifficultyChange(option.id)}
+              className={`rounded border px-2 py-2 uppercase tracking-wider transition-colors ${
+                difficulty === option.id
+                  ? "border-cursor-bright bg-cursor-deep text-cursor-bright"
+                  : "border-white/15 text-slate-300 hover:border-cursor/60"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          {DIFFICULTIES.find((option) => option.id === difficulty)?.blurb}
         </p>
       </div>
 

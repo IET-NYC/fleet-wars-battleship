@@ -30,6 +30,31 @@ export interface AiOptions {
   useParity?: boolean;
   /** Probability of chasing an outstanding hit instead of hunting at random. */
   targetChance?: number;
+  /** Skip hunt cells too boxed in to hide the smallest ship still afloat. */
+  useShipFit?: boolean;
+}
+
+/** Three opponents: a scattergun, a competent hunter, and the full algorithm. */
+export type AiDifficulty = "easy" | "medium" | "hard";
+
+export const DIFFICULTY_PRESETS: Record<AiDifficulty, AiOptions> = {
+  easy: { useParity: false, targetChance: 0, useShipFit: false },
+  medium: { useParity: false, targetChance: 0.75, useShipFit: true },
+  hard: { useParity: true, targetChance: 1, useShipFit: true },
+};
+
+/**
+ * Options for a difficulty, optionally handicapped for OP-MODE: the AI loses
+ * its parity sweep and chases an outstanding hit far less often.
+ */
+export function aiOptionsFor(difficulty: AiDifficulty, handicapped = false): AiOptions {
+  const preset = DIFFICULTY_PRESETS[difficulty];
+  if (!handicapped) return { ...preset };
+  return {
+    ...preset,
+    useParity: false,
+    targetChance: (preset.targetChance ?? 1) * 0.55,
+  };
 }
 
 export interface AiShotReport {
@@ -48,6 +73,7 @@ export class HuntTargetAI {
   private readonly random: () => number;
   private readonly useParity: boolean;
   private readonly targetChance: number;
+  private readonly useShipFit: boolean;
 
   constructor(
     shipLengths: number[],
@@ -58,6 +84,7 @@ export class HuntTargetAI {
     this.random = random;
     this.useParity = options.useParity ?? true;
     this.targetChance = options.targetChance ?? 1;
+    this.useShipFit = options.useShipFit ?? true;
   }
 
   get mode(): "hunt" | "target" {
@@ -87,11 +114,13 @@ export class HuntTargetAI {
       throw new Error("AI cannot fire after the game is over");
     }
 
-    const targets = this.buildTargets();
     // A targetChance below 1 lets the AI wander off a known hit; the roll is
-    // skipped entirely at full chance so seeded runs stay reproducible.
-    if (targets.length > 0 && (this.targetChance >= 1 || this.random() < this.targetChance)) {
-      return targets[0].coord;
+    // skipped at the extremes so seeded runs stay reproducible.
+    if (this.targetChance > 0) {
+      const targets = this.buildTargets();
+      if (targets.length > 0 && (this.targetChance >= 1 || this.random() < this.targetChance)) {
+        return targets[0].coord;
+      }
     }
 
     const candidates = this.huntCandidates();
@@ -258,7 +287,9 @@ export class HuntTargetAI {
     if (unfired.length === 0) return [];
 
     const length = this.smallestRemainingLength;
-    const viable = unfired.filter((coord) => this.canHideShip(coord, length));
+    const viable = this.useShipFit
+      ? unfired.filter((coord) => this.canHideShip(coord, length))
+      : unfired;
     const parityViable = this.useParity ? viable.filter(isParity) : [];
 
     if (parityViable.length > 0) return parityViable;

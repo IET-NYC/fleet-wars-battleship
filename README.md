@@ -34,6 +34,16 @@ Pick a mode on the placement screen (it sticks across Play Again):
   handicapped — it drops the parity sweep and only chases an outstanding hit
   about half the time, so it wastes shots and loses ships it had found.
 
+### AI difficulty
+
+Orthogonal to the mode, and also sticky across Play Again (default Medium):
+
+- **Easy** — scattergun: fires at random and never follows up a hit.
+- **Medium** — hunts without the parity sweep and chases a hit ~75% of the time.
+- **Hard** — the full algorithm: parity hunting and relentless target mode.
+
+OP-Mode's handicap stacks on top of the chosen difficulty.
+
 ## Run locally
 
 ```bash
@@ -46,7 +56,7 @@ Then open the printed URL (defaults to http://localhost:5173).
 ## Run tests / checks
 
 ```bash
-npm test        # 89 Vitest tests: board, rules, AI, reducer, full-game stress
+npm test        # 96 Vitest tests: board, rules, AI, reducer, full-game stress
 npm run lint    # ESLint
 npm run build   # TypeScript project build + Vite production bundle
 ```
@@ -127,9 +137,10 @@ after the game is over.
 Its own fleet is placed randomly (valid, non-overlapping) and re-rolled every
 game.
 
-Both behaviours are switchable through `AiOptions` (`useParity`,
-`targetChance`), which is how OP-Mode weakens the opponent without forking the
-search code.
+All of this is switchable through `AiOptions` (`useParity`, `targetChance`,
+`useShipFit`); `aiOptionsFor(difficulty, handicapped)` turns a difficulty — and
+OP-Mode's handicap — into those options, so no search code is forked per
+opponent.
 
 ## Deployment
 
