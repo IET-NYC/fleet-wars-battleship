@@ -20,7 +20,9 @@ Both grids sit on an animated open-ocean backdrop, and ships are drawn as naval
 vessels rather than blocks: `hullSegments` in `src/game/rules.ts` labels each
 occupied cell bow / mid / stern, and `HullSprite` renders the matching SVG
 silhouette (prow, bridge, aft turret), rotated for vertical ships, so the cells
-of one ship read as a single hull.
+of one ship read as a single hull. Each resolved shot leaves its own marker,
+drawn by `ShotMarker`: expanding splash rings for open water, a yellow-cored
+blast for a hit, and a flickering burning wreck for a sunk hull.
 
 ### Game modes
 
@@ -82,6 +84,7 @@ fleet-wars-battleship/
 │   │   ├── Toast.tsx
 │   │   ├── ShotFlash.tsx  # DIRECT HIT / MISS callout
 │   │   ├── HullSprite.tsx # bow/mid/stern ship silhouettes
+│   │   ├── ShotMarker.tsx # splash / blast / burning wreck cell markers
 │   │   └── GameOverPanel.tsx
 │   └── styles/
 │       └── index.css
