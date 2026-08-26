@@ -14,7 +14,17 @@ Standard Battleship on two 10x10 grids (columns A-J, rows 1-10) with five ships
 per side (sizes 5, 4, 3, 3, 2). You place your fleet, then trade shots with the
 AI until one fleet is fully sunk. Shots resolve to Miss, Hit, or Hit & Sunk, and
 sunk ships are revealed on the enemy grid. A battle log, per-ship health pips,
-and flavour text narrate the fight.
+flavour text and a **DIRECT HIT / MISS** callout on every shot narrate the fight.
+
+### Game modes
+
+Pick a mode on the placement screen (it sticks across Play Again):
+
+- **Standard** — even-handed Battleship, strict alternating turns.
+- **OP-Mode** — the Cognition Fleet is favoured: every hit earns the player
+  another shot immediately (a miss ends the streak), and the Cursor AI is
+  handicapped — it drops the parity sweep and only chases an outstanding hit
+  about half the time, so it wastes shots and loses ships it had found.
 
 ## Run locally
 
@@ -28,7 +38,7 @@ Then open the printed URL (defaults to http://localhost:5173).
 ## Run tests / checks
 
 ```bash
-npm test        # 73 Vitest tests: board, rules, AI, reducer, full-game stress
+npm test        # 85 Vitest tests: board, rules, AI, reducer, full-game stress
 npm run lint    # ESLint
 npm run build   # TypeScript project build + Vite production bundle
 ```
@@ -64,6 +74,7 @@ fleet-wars-battleship/
 │   │   ├── FleetStatus.tsx
 │   │   ├── BattleLog.tsx
 │   │   ├── Toast.tsx
+│   │   ├── ShotFlash.tsx  # DIRECT HIT / MISS callout
 │   │   └── GameOverPanel.tsx
 │   └── styles/
 │       └── index.css
@@ -105,6 +116,10 @@ after the game is over.
 
 Its own fleet is placed randomly (valid, non-overlapping) and re-rolled every
 game.
+
+Both behaviours are switchable through `AiOptions` (`useParity`,
+`targetChance`), which is how OP-Mode weakens the opponent without forking the
+search code.
 
 ## Deployment
 

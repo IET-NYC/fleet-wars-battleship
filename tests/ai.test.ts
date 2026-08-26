@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createBoard, placeShip, randomPlacement } from "../src/game/board";
 import { HuntTargetAI } from "../src/game/ai";
+import type { AiOptions } from "../src/game/ai";
 import { alreadyFired, coordLabel, fireShot, isSunk } from "../src/game/rules";
 import { PLAYER_SHIPS } from "../src/game/theme";
 import { BOARD_SIZE } from "../src/game/types";
@@ -29,10 +30,11 @@ function label(coord: Coord): string {
  * Plays a full game of the AI against `board`, asserting the three "never"
  * rules on every single shot.
  */
-function playOut(board: Board, random: () => number) {
+function playOut(board: Board, random: () => number, options: AiOptions = {}) {
   const ai = new HuntTargetAI(
     board.ships.map((ship) => ship.length),
     random,
+    options,
   );
   const seen = new Set<string>();
   let current = board;
@@ -335,5 +337,70 @@ describe("HuntTargetAI target mode", () => {
     expect(aiTotal / games).toBeLessThan(randomTotal / games);
     // A competent hunt/target AI clears the board in well under 70 shots.
     expect(aiTotal / games).toBeLessThan(70);
+  });
+});
+
+describe("HuntTargetAI handicaps (OP-MODE)", () => {
+  const HANDICAP: AiOptions = { useParity: false, targetChance: 0.55 };
+
+  it("ignores the parity pattern when parity hunting is switched off", () => {
+    const ai = new HuntTargetAI([2], seededRandom(5), { useParity: false });
+    const offParity: Coord[] = [];
+    for (let shot = 0; shot < 40; shot += 1) {
+      const coord = ai.nextShot();
+      if ((coord.row + coord.col) % 2 !== 0) offParity.push(coord);
+      ai.registerResult({ coord, outcome: "miss" });
+    }
+    expect(offParity.length).toBeGreaterThan(0);
+  });
+
+  it("wanders off an outstanding hit when the targetChance roll fails", () => {
+    const neighbours = new Set(
+      [
+        { row: 3, col: 4 },
+        { row: 5, col: 4 },
+        { row: 4, col: 3 },
+        { row: 4, col: 5 },
+      ].map(label),
+    );
+    const chaseAt = (roll: number) => {
+      // The first draw is the targetChance roll; later draws pick a hunt cell.
+      let first = true;
+      const random = () => {
+        if (first) {
+          first = false;
+          return roll;
+        }
+        return 0.99;
+      };
+      const ai = new HuntTargetAI([3], random, HANDICAP);
+      ai.registerResult({ coord: { row: 4, col: 4 }, outcome: "hit" });
+      return neighbours.has(label(ai.nextShot()));
+    };
+
+    expect(chaseAt(0.2)).toBe(true);
+    expect(chaseAt(0.9)).toBe(false);
+  });
+
+  it("still honours the three never-rules and finishes the board when handicapped", () => {
+    for (let seed = 1; seed <= 10; seed += 1) {
+      const random = seededRandom(seed * 977);
+      const { ai } = playOut(randomPlacement(PLAYER_SHIPS, random), random, HANDICAP);
+      expect(ai.isGameOver).toBe(true);
+    }
+  });
+
+  it("needs more shots than the full-strength AI on the same layouts", () => {
+    let strong = 0;
+    let weak = 0;
+    const games = 25;
+
+    for (let seed = 1; seed <= games; seed += 1) {
+      const layout = randomPlacement(PLAYER_SHIPS, seededRandom(seed * 613));
+      strong += playOut(layout, seededRandom(seed * 71)).shots;
+      weak += playOut(layout, seededRandom(seed * 71), HANDICAP).shots;
+    }
+
+    expect(weak / games).toBeGreaterThan(strong / games);
   });
 });

@@ -9,7 +9,7 @@ import {
   gameReducer,
   unplacedShips,
 } from "../src/state/gameReducer";
-import type { GameState } from "../src/state/gameReducer";
+import type { GameMode, GameState } from "../src/state/gameReducer";
 
 /** Deterministic 0..1 sequence so enemy layouts are reproducible. */
 function seededRandom(seed: number): () => number {
@@ -20,8 +20,8 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function placedFleet(): GameState {
-  let state = createInitialState();
+function placedFleet(mode: GameMode = "standard"): GameState {
+  let state = createInitialState(mode);
   for (const spec of PLAYER_SHIPS) {
     state = gameReducer(state, { type: "selectShip", shipId: spec.id });
     state = gameReducer(state, {
@@ -32,8 +32,18 @@ function placedFleet(): GameState {
   return state;
 }
 
-function inBattle(): GameState {
-  return gameReducer(placedFleet(), { type: "startBattle", random: seededRandom(7) });
+function inBattle(mode: GameMode = "standard"): GameState {
+  return gameReducer(placedFleet(mode), { type: "startBattle", random: seededRandom(7) });
+}
+
+/** A coordinate that is water on the enemy board, for a guaranteed miss. */
+function emptyEnemyCell(state: GameState): Coord {
+  for (let row = 0; row < 10; row += 1) {
+    for (let col = 0; col < 10; col += 1) {
+      if (!state.enemyBoard.cells[row][col].shipId) return { row, col };
+    }
+  }
+  throw new Error("the enemy board has no empty cell");
 }
 
 function firstEnemyShipCells(state: GameState): Coord[] {
@@ -244,6 +254,94 @@ describe("play again", () => {
     expect(toast).not.toBeNull();
     expect(gameReducer(state, { type: "dismissToast", id: -1 })).toBe(state);
     expect(gameReducer(state, { type: "dismissToast", id: toast!.id }).toast).toBeNull();
+  });
+});
+
+describe("shot flash", () => {
+  it("announces the outcome and coordinate of each side's shot", () => {
+    const battle = inBattle();
+    const miss = gameReducer(battle, { type: "playerFire", coord: emptyEnemyCell(battle) });
+    expect(miss.flash).toMatchObject({ attacker: "player", outcome: "miss" });
+    expect(miss.flash?.label).toMatch(/^[A-J]([1-9]|10)$/);
+
+    const hitCoord = firstEnemyShipCells(battle)[0];
+    const hit = gameReducer(battle, { type: "playerFire", coord: hitCoord });
+    expect(hit.flash).toMatchObject({ attacker: "player", outcome: "hit" });
+
+    const enemyShot = gameReducer(hit, {
+      type: "enemyFire",
+      coord: battle.playerBoard.ships[0].cells[0],
+    });
+    expect(enemyShot.flash).toMatchObject({ attacker: "enemy", outcome: "hit" });
+  });
+
+  it("clears only the flash it was asked to clear", () => {
+    const battle = inBattle();
+    const state = gameReducer(battle, { type: "playerFire", coord: emptyEnemyCell(battle) });
+    const flash = state.flash;
+    expect(flash).not.toBeNull();
+    expect(gameReducer(state, { type: "dismissFlash", id: -1 })).toBe(state);
+    expect(gameReducer(state, { type: "dismissFlash", id: flash!.id }).flash).toBeNull();
+  });
+});
+
+describe("OP-MODE", () => {
+  it("is off by default and can only be switched during placement", () => {
+    expect(createInitialState().mode).toBe("standard");
+    const chosen = gameReducer(createInitialState(), { type: "setMode", mode: "op" });
+    expect(chosen.mode).toBe("op");
+
+    const battle = inBattle();
+    expect(gameReducer(battle, { type: "setMode", mode: "op" })).toBe(battle);
+  });
+
+  it("grants the player another shot after a hit but not after a miss", () => {
+    const battle = inBattle("op");
+    const cells = firstEnemyShipCells(battle);
+
+    const afterHit = gameReducer(battle, { type: "playerFire", coord: cells[0] });
+    expect(afterHit.phase).toBe("playerTurn");
+    expect(afterHit.log[0].text).toContain("Hot streak");
+
+    // The extra shot is real: a second shot lands without an enemy turn between.
+    const afterSecond = gameReducer(afterHit, { type: "playerFire", coord: cells[1] });
+    expect(shotsFired(afterSecond.enemyBoard)).toBe(2);
+
+    const afterMiss = gameReducer(battle, {
+      type: "playerFire",
+      coord: emptyEnemyCell(battle),
+    });
+    expect(afterMiss.phase).toBe("enemyTurn");
+  });
+
+  it("does not hand the enemy a free shot for its own hits", () => {
+    const battle = inBattle("op");
+    const enemyTurn: GameState = { ...battle, phase: "enemyTurn" };
+    const state = gameReducer(enemyTurn, {
+      type: "enemyFire",
+      coord: battle.playerBoard.ships[0].cells[0],
+    });
+    expect(state.phase).toBe("playerTurn");
+  });
+
+  it("keeps the chosen mode across Play Again", () => {
+    const battle = inBattle("op");
+    const fresh = gameReducer(battle, { type: "reset" });
+    expect(fresh.mode).toBe("op");
+    expect(fresh).toEqual(createInitialState("op"));
+  });
+
+  it("still ends the game immediately on the winning shot", () => {
+    let state = inBattle("op");
+    for (const ship of state.enemyBoard.ships) {
+      for (const coord of ship.cells) {
+        if (state.phase === "gameOver") break;
+        state = gameReducer(state, { type: "playerFire", coord });
+        if (state.phase === "enemyTurn") state = { ...state, phase: "playerTurn" };
+      }
+    }
+    expect(state.phase).toBe("gameOver");
+    expect(state.winner).toBe("player");
   });
 });
 

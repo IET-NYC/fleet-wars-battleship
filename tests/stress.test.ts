@@ -6,7 +6,7 @@ import { PLAYER_SHIPS } from "../src/game/theme";
 import { BOARD_SIZE } from "../src/game/types";
 import type { Coord } from "../src/game/types";
 import { LOG_LIMIT, createInitialState, gameReducer } from "../src/state/gameReducer";
-import type { GameState } from "../src/state/gameReducer";
+import type { GameMode, GameState } from "../src/state/gameReducer";
 
 function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -32,9 +32,9 @@ function shuffledBoardOrder(random: () => number): Coord[] {
  * Plays a whole game through the reducer: the "player" fires in a shuffled order
  * and the enemy fires through the real AI, exactly as `useGame` drives it.
  */
-function playFullGame(seed: number) {
+function playFullGame(seed: number, mode: GameMode = "standard") {
   const random = seededRandom(seed);
-  let state: GameState = createInitialState();
+  let state: GameState = createInitialState(mode);
   state = gameReducer(state, { type: "autoPlace", random });
   state = gameReducer(state, { type: "startBattle", random });
 
@@ -127,6 +127,17 @@ describe("full-game stress", () => {
         }
       }
       expect(occupied.size).toBe(PLAYER_SHIPS.reduce((total, s) => total + s.length, 0));
+    }
+  });
+
+  it("terminates in OP-MODE too, with the player taking the extra shots", () => {
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const { state, playerShots, enemyShots } = playFullGame(seed * 15485863, "op");
+      expect(state.phase).toBe("gameOver");
+      expect(state.mode).toBe("op");
+      expect(playerShots).toBeGreaterThanOrEqual(enemyShots);
+      expect(allSunk(state.enemyBoard)).toBe(state.winner === "player");
+      expect(allSunk(state.playerBoard)).toBe(state.winner === "enemy");
     }
   });
 
