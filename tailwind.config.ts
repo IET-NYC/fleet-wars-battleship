@@ -50,6 +50,20 @@ export default {
           "70%": { opacity: "1", transform: "scale(1)" },
           "100%": { opacity: "0", transform: "scale(1.02)" },
         },
+        "splash-ring": {
+          "0%": { opacity: "0", transform: "scale(0.25)" },
+          "55%": { opacity: "1", transform: "scale(1.15)" },
+          "100%": { opacity: "0.85", transform: "scale(1)" },
+        },
+        "blast-flare": {
+          "0%": { opacity: "0", transform: "scale(0.2) rotate(-25deg)" },
+          "45%": { opacity: "1", transform: "scale(1.35) rotate(8deg)" },
+          "100%": { opacity: "1", transform: "scale(1) rotate(0deg)" },
+        },
+        "ember-flicker": {
+          "0%, 100%": { opacity: "0.75", transform: "scale(0.94)" },
+          "50%": { opacity: "1", transform: "scale(1.04)" },
+        },
         swell: {
           "0%": { backgroundPosition: "0 0, 0 0" },
           "100%": { backgroundPosition: "120px 60px, -120px 60px" },
@@ -66,6 +80,9 @@ export default {
         "sunk-shake": "sunk-shake 380ms ease-in-out",
         "toast-in": "toast-in 180ms ease-out",
         "flash-strike": "flash-strike 900ms ease-out",
+        "splash-ring": "splash-ring 420ms ease-out",
+        "blast-flare": "blast-flare 360ms ease-out",
+        "ember-flicker": "ember-flicker 2.6s ease-in-out infinite",
         swell: "swell 24s linear infinite",
         "radar-sweep": "radar-sweep 2.4s ease-in-out infinite",
       },

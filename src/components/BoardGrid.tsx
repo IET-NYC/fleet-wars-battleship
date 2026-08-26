@@ -4,6 +4,7 @@ import { cellState, columnLabels, coordKey, coordLabel, hullSegments } from "../
 import type { Board, Coord, Orientation, Side } from "../game/types";
 import { BOARD_SIZE } from "../game/types";
 import HullSprite from "./HullSprite";
+import ShotMarker from "./ShotMarker";
 
 interface PlacementConfig {
   shipLength: number;
@@ -137,11 +138,9 @@ export default function BoardGrid({
                       wrecked={state === "sunk" || state === "hit"}
                     />
                   ) : null}
-                  <span className="relative">
-                    {state === "miss" ? "•" : null}
-                    {state === "hit" ? "✕" : null}
-                    {state === "sunk" ? "✕" : null}
-                  </span>
+                  {state === "miss" || state === "hit" || state === "sunk" ? (
+                    <ShotMarker state={state} />
+                  ) : null}
                 </button>
               );
             })}
