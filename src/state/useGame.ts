@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { HuntTargetAI, aiOptionsFor } from "../game/ai";
 import { fireShot } from "../game/rules";
 import { PLAYER_SHIPS } from "../game/theme";
-import type { Coord } from "../game/types";
+import type { Board, Coord } from "../game/types";
+import { seedAiFromBoard } from "./aiRecovery";
 import {
   createInitialState,
   fleetReady,
@@ -24,16 +25,20 @@ export function useGame() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  /** Builds the opponent from the difficulty and mode chosen during placement. */
-  const createAi = useCallback(
-    () =>
-      new HuntTargetAI(
-        PLAYER_SHIPS.map((ship) => ship.length),
-        Math.random,
-        aiOptionsFor(stateRef.current.difficulty, stateRef.current.mode === "op"),
-      ),
-    [],
-  );
+  /**
+   * Builds the opponent from the difficulty and mode chosen during placement.
+   * `seedFrom` replays a board's existing shots into the new AI, for the case
+   * where the instance is rebuilt mid-game.
+   */
+  const createAi = useCallback((seedFrom?: Board) => {
+    const ai = new HuntTargetAI(
+      PLAYER_SHIPS.map((ship) => ship.length),
+      Math.random,
+      aiOptionsFor(stateRef.current.difficulty, stateRef.current.mode === "op"),
+    );
+    if (seedFrom) seedAiFromBoard(ai, seedFrom);
+    return ai;
+  }, []);
 
   const startBattle = useCallback(() => {
     aiRef.current = createAi();
@@ -53,31 +58,28 @@ export function useGame() {
     const timer = window.setTimeout(() => {
       // Rebuild the AI rather than stalling on "Enemy is thinking…" if the
       // instance was lost (a hot reload drops the ref but keeps the state).
-      if (!aiRef.current) aiRef.current = createAi();
+      if (!aiRef.current) aiRef.current = createAi(stateRef.current.playerBoard);
       const ai = aiRef.current;
       if (ai.isGameOver) return;
 
-      let coord: Coord;
+      // Nothing can catch a throw from a timer, and a stuck enemy turn is
+      // unrecoverable, so surrender the turn instead of hanging the game.
       try {
-        coord = ai.nextShot();
+        const coord = ai.nextShot();
+        const result = fireShot(stateRef.current.playerBoard, coord);
+        const sunkShip =
+          result.shot.outcome === "sunk"
+            ? result.board.ships.find((ship) => ship.id === result.shot.shipId)
+            : undefined;
+        ai.registerResult(
+          { coord, outcome: result.shot.outcome, sunkShipLength: sunkShip?.length },
+          result.allSunk,
+        );
+        dispatch({ type: "enemyFire", coord });
       } catch (error) {
-        // Nothing can catch a throw from a timer, and a stuck enemy turn is
-        // unrecoverable, so surrender the turn instead of hanging the game.
         console.error("Cursor Fleet could not fire", error);
         dispatch({ type: "enemyStandDown" });
-        return;
       }
-
-      const result = fireShot(stateRef.current.playerBoard, coord);
-      const sunkShip =
-        result.shot.outcome === "sunk"
-          ? result.board.ships.find((ship) => ship.id === result.shot.shipId)
-          : undefined;
-      ai.registerResult(
-        { coord, outcome: result.shot.outcome, sunkShipLength: sunkShip?.length },
-        result.allSunk,
-      );
-      dispatch({ type: "enemyFire", coord });
     }, delay);
     return () => window.clearTimeout(timer);
   }, [createAi, state.phase]);
